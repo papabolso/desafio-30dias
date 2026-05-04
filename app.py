@@ -5,113 +5,142 @@ import requests
 
 st.set_page_config(page_title="Desafio 30 Dias", page_icon="🏆", layout="centered")
 
-# === CSS minimalista ===
+# === CSS bege minimalista ===
 st.markdown("""
 <style>
     .stApp { 
-        background-color: #ffffff; 
-        color: #000000;
+        background-color: #f5f0e6; 
+        color: #2a2520;
     }
     
-    /* Texto geral preto puro */
     .stApp, .stApp p, .stApp span, .stApp label, .stApp div {
-        color: #000000;
+        color: #2a2520;
     }
     
-    /* Sidebar */
     section[data-testid="stSidebar"] { 
-        background-color: #f5f5f5;
-        border-right: 1px solid #d0d0d0;
+        background-color: #ebe3d3;
+        border-right: 1px solid #d4c8b0;
     }
     section[data-testid="stSidebar"] * {
-        color: #000000 !important;
+        color: #2a2520 !important;
     }
     
-    /* Títulos pretos e fortes */
     h1, h2, h3, h4 { 
-        color: #000000 !important; 
+        color: #2a2520 !important; 
         font-weight: 700 !important;
     }
     
-    /* Caption mais escuro */
     .stApp [data-testid="stCaptionContainer"],
     .stApp small {
-        color: #404040 !important;
+        color: #6b5d48 !important;
     }
     
-    /* Botões pretos com texto branco */
     .stButton button { 
-        background-color: #000000 !important; 
-        color: #ffffff !important; 
+        background-color: #2a2520 !important; 
+        color: #f5f0e6 !important; 
         border: none; 
         border-radius: 6px; 
         font-weight: 600;
     }
     .stButton button:hover { 
-        background-color: #2a2a2a !important; 
-        color: #ffffff !important; 
+        background-color: #4a4035 !important; 
+        color: #f5f0e6 !important; 
     }
     .stButton button * {
-        color: #ffffff !important;
+        color: #f5f0e6 !important;
     }
     
-    /* Métricas */
-    [data-testid="stMetricValue"] { 
-        font-size: 1.6rem !important; 
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    [data-testid="stMetricDelta"] {
-        color: #000000 !important;
-        font-weight: 600 !important;
-    }
-    [data-testid="stMetricDelta"] svg {
-        display: none;
-    }
-    
-    /* Barra de progresso preta */
     .stProgress > div > div > div > div { 
-        background-color: #000000 !important; 
+        background-color: #2a2520 !important; 
     }
     .stProgress > div > div > div { 
-        background-color: #e0e0e0 !important; 
+        background-color: #d4c8b0 !important; 
     }
     
-    /* Expander */
     div[data-testid="stExpander"] { 
-        border: 1px solid #d0d0d0; 
+        border: 1px solid #d4c8b0; 
         border-radius: 8px;
-        background-color: #ffffff;
+        background-color: #faf6ed;
     }
     div[data-testid="stExpander"] summary {
-        color: #000000 !important;
+        color: #2a2520 !important;
         font-weight: 600;
     }
     
-    /* Tabela */
     .stDataFrame {
-        border: 1px solid #d0d0d0;
+        border: 1px solid #d4c8b0;
         border-radius: 6px;
     }
     .stDataFrame * {
-        color: #000000 !important;
+        color: #2a2520 !important;
     }
     
-    /* Inputs */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] {
-        color: #000000 !important;
-        border-color: #b0b0b0 !important;
+        color: #2a2520 !important;
+        border-color: #b8a888 !important;
+        background-color: #faf6ed !important;
     }
     
-    /* Checkbox */
     .stCheckbox label, .stCheckbox label p {
-        color: #000000 !important;
+        color: #2a2520 !important;
         font-weight: 500;
     }
     
-    /* Radio */
     .stRadio label, .stRadio label p {
-        color: #000000 !important;
+        color: #2a2520 !important;
+    }
+    
+    /* Cards do ranking */
+    .rank-card {
+        background-color: #faf6ed;
+        border: 1px solid #d4c8b0;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .rank-card.gold { background-color: #f5e9c8; border-color: #d4b96a; }
+    .rank-card.silver { background-color: #ece7dd; border-color: #b8b0a0; }
+    .rank-card.bronze { background-color: #ecd9c0; border-color: #b89060; }
+    
+    .rank-pos {
+        font-size: 1.8rem;
+        font-weight: 700;
+        min-width: 50px;
+        text-align: center;
+    }
+    .rank-info { flex: 1; }
+    .rank-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .rank-bar {
+        background-color: #d4c8b0;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .rank-bar-fill {
+        background-color: #2a2520;
+        height: 100%;
+        border-radius: 4px;
+    }
+    .rank-stats {
+        text-align: right;
+        min-width: 90px;
+    }
+    .rank-pts {
+        font-size: 1.3rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .rank-pct {
+        font-size: 0.85rem;
+        color: #6b5d48;
+        margin-top: 2px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -158,7 +187,6 @@ st.caption(f"{INICIO.strftime('%d/%m')} → {FIM.strftime('%d/%m')}")
 
 df = carregar()
 
-# Lista de participantes
 participantes_existentes = sorted(df["pessoa"].unique().tolist()) if not df.empty else []
 if "novos_participantes" not in st.session_state:
     st.session_state.novos_participantes = []
@@ -206,24 +234,41 @@ else:
         else:
             st.sidebar.error("Erro ao salvar")
 
-# Ranking
+# === Ranking ===
 st.subheader("Ranking")
 
 pontos = {p: len(df[df["pessoa"] == p]) for p in todos_participantes}
 dias_ativos = (min(FIM, hoje) - INICIO).days + 1
 max_possivel = dias_ativos * len(TAREFAS) if dias_ativos > 0 else 1
 ranking = sorted(pontos.items(), key=lambda x: -x[1])
-medals = ["🥇", "🥈", "🥉"] + ["·"] * 20
+
+medals = ["🥇", "🥈", "🥉"]
+classes = ["gold", "silver", "bronze"]
 
 for i, (p, pts) in enumerate(ranking):
     pct = (pts / max_possivel * 100) if max_possivel else 0
-    col1, col2, col3 = st.columns([1, 4, 2])
-    col1.markdown(f"### {medals[i]}")
-    col2.markdown(f"**{p}**")
-    col2.progress(min(pct / 100, 1.0))
-    col3.metric("", f"{pts} pts", f"{pct:.0f}%")
+    if i < 3:
+        pos = medals[i]
+        cls = classes[i]
+    else:
+        pos = f"{i+1}º"
+        cls = ""
+    
+    st.markdown(f"""
+    <div class="rank-card {cls}">
+        <div class="rank-pos">{pos}</div>
+        <div class="rank-info">
+            <div class="rank-name">{p}</div>
+            <div class="rank-bar"><div class="rank-bar-fill" style="width: {min(pct, 100)}%;"></div></div>
+        </div>
+        <div class="rank-stats">
+            <div class="rank-pts">{pts} pts</div>
+            <div class="rank-pct">{pct:.0f}%</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# Histórico
+# === Histórico ===
 st.subheader("Histórico")
 dias = [INICIO + timedelta(days=i) for i in range((min(FIM, hoje) - INICIO).days + 1)]
 linhas = []
