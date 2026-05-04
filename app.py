@@ -8,17 +8,111 @@ st.set_page_config(page_title="Desafio 30 Dias", page_icon="🏆", layout="cente
 # === CSS minimalista ===
 st.markdown("""
 <style>
-    .stApp { background-color: #ffffff; color: #1a1a1a; }
-    section[data-testid="stSidebar"] { background-color: #fafafa; }
-    h1, h2, h3 { color: #1a1a1a; font-weight: 600; }
-    .stButton button { 
-        background-color: #1a1a1a; color: white; border: none; 
-        border-radius: 6px; font-weight: 500;
+    .stApp { 
+        background-color: #ffffff; 
+        color: #000000;
     }
-    .stButton button:hover { background-color: #333; color: white; }
-    [data-testid="stMetricValue"] { font-size: 1.5rem; }
-    .stProgress > div > div > div { background-color: #1a1a1a; }
-    div[data-testid="stExpander"] { border: 1px solid #e5e5e5; border-radius: 8px; }
+    
+    /* Texto geral preto puro */
+    .stApp, .stApp p, .stApp span, .stApp label, .stApp div {
+        color: #000000;
+    }
+    
+    /* Sidebar */
+    section[data-testid="stSidebar"] { 
+        background-color: #f5f5f5;
+        border-right: 1px solid #d0d0d0;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #000000 !important;
+    }
+    
+    /* Títulos pretos e fortes */
+    h1, h2, h3, h4 { 
+        color: #000000 !important; 
+        font-weight: 700 !important;
+    }
+    
+    /* Caption mais escuro */
+    .stApp [data-testid="stCaptionContainer"],
+    .stApp small {
+        color: #404040 !important;
+    }
+    
+    /* Botões pretos com texto branco */
+    .stButton button { 
+        background-color: #000000 !important; 
+        color: #ffffff !important; 
+        border: none; 
+        border-radius: 6px; 
+        font-weight: 600;
+    }
+    .stButton button:hover { 
+        background-color: #2a2a2a !important; 
+        color: #ffffff !important; 
+    }
+    .stButton button * {
+        color: #ffffff !important;
+    }
+    
+    /* Métricas */
+    [data-testid="stMetricValue"] { 
+        font-size: 1.6rem !important; 
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stMetricDelta"] {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricDelta"] svg {
+        display: none;
+    }
+    
+    /* Barra de progresso preta */
+    .stProgress > div > div > div > div { 
+        background-color: #000000 !important; 
+    }
+    .stProgress > div > div > div { 
+        background-color: #e0e0e0 !important; 
+    }
+    
+    /* Expander */
+    div[data-testid="stExpander"] { 
+        border: 1px solid #d0d0d0; 
+        border-radius: 8px;
+        background-color: #ffffff;
+    }
+    div[data-testid="stExpander"] summary {
+        color: #000000 !important;
+        font-weight: 600;
+    }
+    
+    /* Tabela */
+    .stDataFrame {
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
+    }
+    .stDataFrame * {
+        color: #000000 !important;
+    }
+    
+    /* Inputs */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] {
+        color: #000000 !important;
+        border-color: #b0b0b0 !important;
+    }
+    
+    /* Checkbox */
+    .stCheckbox label, .stCheckbox label p {
+        color: #000000 !important;
+        font-weight: 500;
+    }
+    
+    /* Radio */
+    .stRadio label, .stRadio label p {
+        color: #000000 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -64,7 +158,7 @@ st.caption(f"{INICIO.strftime('%d/%m')} → {FIM.strftime('%d/%m')}")
 
 df = carregar()
 
-# Lista de participantes = quem já tem registro + quem foi adicionado nessa sessão
+# Lista de participantes
 participantes_existentes = sorted(df["pessoa"].unique().tolist()) if not df.empty else []
 if "novos_participantes" not in st.session_state:
     st.session_state.novos_participantes = []
@@ -73,7 +167,6 @@ todos_participantes = sorted(set(participantes_existentes + st.session_state.nov
 # Sidebar
 st.sidebar.header("Marcar checklist")
 
-# Adicionar pessoa
 with st.sidebar.expander("➕ Entrar no desafio"):
     novo = st.text_input("Seu nome", key="novo_nome")
     if st.button("Adicionar"):
