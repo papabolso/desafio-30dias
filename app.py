@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date, timedelta
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+import requests
 
 st.set_page_config(page_title="Desafio 30 Dias", page_icon="🏆", layout="wide")
 
@@ -18,20 +18,26 @@ TAREFAS = [
 INICIO = date(2026, 5, 4)
 FIM = date(2026, 6, 3)
 
-# === CONEXÃO ===
-conn = st.connection("gsheets", type=GSheetsConnection)
+URL = st.secrets["gsheets"]["apps_script_url"]
 
+# === BACKEND ===
+@st.cache_data(ttl=10)
 def carregar():
-    df = conn.read(worksheet="registros", ttl=5)
-    df = df.dropna(how="all")
-    return df if not df.empty else pd.DataFrame(columns=["pessoa", "data", "tarefa"])
+    r = requests.get(URL, timeout=15)
+    rows = r.json()
+    if len(rows) <= 1:
+        return pd.DataFrame(columns=["pessoa", "data", "tarefa"])
+    return pd.DataFrame(rows[1:], columns=rows[0])
 
 def salvar_dia(pessoa, dia, marcadas):
-    df = carregar()
-    df = df[~((df["pessoa"] == pessoa) & (df["data"] == dia.isoformat()))]
-    novos = pd.DataFrame([{"pessoa": pessoa, "data": dia.isoformat(), "tarefa": t} for t in marcadas])
-    final = pd.concat([df, novos], ignore_index=True)
-    conn.update(worksheet="registros", data=final)
+    payload = {
+        "action": "save_day",
+        "pessoa": pessoa,
+        "data": dia.isoformat(),
+        "tarefas": marcadas,
+    }
+    r = requests.post(URL, json=payload, timeout=15)
+    return r.json().get("ok", False)
 
 # === UI ===
 hoje = date.today()
@@ -40,7 +46,7 @@ ontem = hoje - timedelta(days=1)
 st.title("🏆 Desafio 30 Dias")
 st.caption(f"{INICIO.strftime('%d/%m')} → {FIM.strftime('%d/%m')}")
 
-# Sidebar - marcar checklist
+# Sidebar
 st.sidebar.header("Marcar checklist")
 pessoa = st.sidebar.selectbox("Quem é você?", PARTICIPANTES)
 opcao = st.sidebar.radio("Dia", [f"Hoje ({hoje.strftime('%d/%m')})", f"Ontem ({ontem.strftime('%d/%m')})"])
@@ -57,10 +63,12 @@ else:
         if st.sidebar.checkbox(t, value=(t in feitas), key=f"{pessoa}-{dia}-{t}"):
             marcadas.append(t)
     if st.sidebar.button("💾 Salvar", type="primary"):
-        salvar_dia(pessoa, dia, marcadas)
-        st.cache_data.clear()
-        st.sidebar.success("Salvo!")
-        st.rerun()
+        if salvar_dia(pessoa, dia, marcadas):
+            st.cache_data.clear()
+            st.sidebar.success("Salvo!")
+            st.rerun()
+        else:
+            st.sidebar.error("Erro ao salvar")
 
 # Ranking
 df = carregar()
