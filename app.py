@@ -14,7 +14,7 @@ st.markdown("""
     section[data-testid="stSidebar"] * { color: #2a2520 !important; }
     h1, h2, h3, h4 { color: #2a2520 !important; font-weight: 700 !important; }
     .stApp [data-testid="stCaptionContainer"], .stApp small { color: #6b5d48 !important; }
-    .stButton button { background-color: #2a2520 !important; color: #f5f0e6 !important; border: none; border-radius: 6px; font-weight: 600; }
+    .stButton button { background-color: #2a2520 !important; color: #f5f0e6 !important; border: none; border-radius: 6px; font-weight: 600; padding: 0.6rem 1.2rem; }
     .stButton button:hover { background-color: #4a4035 !important; color: #f5f0e6 !important; }
     .stButton button * { color: #f5f0e6 !important; }
     .stProgress > div > div > div > div { background-color: #2a2520 !important; }
@@ -49,6 +49,15 @@ st.markdown("""
     .rank-stats { text-align: right; min-width: 90px; }
     .rank-pts { font-size: 1.3rem; font-weight: 700; line-height: 1; }
     .rank-pct { font-size: 0.85rem; color: #6b5d48; margin-top: 2px; }
+    
+    .unsaved {
+        background-color: #f0d8b0; border-left: 4px solid #c47e3a;
+        padding: 10px 14px; border-radius: 4px; font-weight: 600; margin: 12px 0;
+    }
+    .saved {
+        background-color: #dde8c8; border-left: 4px solid #6a8a3a;
+        padding: 10px 14px; border-radius: 4px; margin: 12px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -75,12 +84,12 @@ def carregar():
         return pd.DataFrame(columns=["pessoa", "data", "tarefa"])
     return pd.DataFrame(rows[1:], columns=rows[0])
 
-def toggle_tarefa(pessoa, dia, tarefa):
+def sync_dia(pessoa, dia, marcadas):
     payload = {
-        "action": "toggle",
+        "action": "sync_day",
         "pessoa": pessoa,
         "data": dia.isoformat(),
-        "tarefa": tarefa,
+        "tarefas": marcadas,
     }
     r = requests.post(URL, json=payload, timeout=15)
     return r.json().get("ok", False)
@@ -135,25 +144,33 @@ else:
     <div class="checklist-box">
         <div style="display:flex; justify-content:space-between; align-items:baseline;">
             <div style="font-size:1.2rem; font-weight:700;">📅 {dia.strftime('%d/%m/%Y')}</div>
-            <div style="font-size:1rem; color:#6b5d48; font-weight:600;">{len(feitas_salvas)}/{len(TAREFAS)} feitas</div>
+            <div style="font-size:1rem; color:#6b5d48; font-weight:600;">{len(feitas_salvas)}/{len(TAREFAS)} salvas</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    st.caption("Cada clique salva automaticamente. Clica de novo pra desmarcar.")
-    
+    marcadas = []
     cols = st.columns(2)
     for idx, t in enumerate(TAREFAS):
         with cols[idx % 2]:
-            estava = t in feitas_salvas
-            agora = st.checkbox(t, value=estava, key=f"{pessoa}-{dia}-{t}")
-            if agora != estava:
-                with st.spinner("Salvando..."):
-                    if toggle_tarefa(pessoa, dia, t):
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error("Erro ao salvar")
+            if st.checkbox(t, value=(t in feitas_salvas), key=f"{pessoa}-{dia}-{t}"):
+                marcadas.append(t)
+    
+    mudou = set(marcadas) != feitas_salvas
+    
+    if mudou:
+        st.markdown('<div class="unsaved">⚠️ Mudanças não salvas — clica em Salvar</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="saved">✓ Tudo salvo</div>', unsafe_allow_html=True)
+    
+    if st.button("💾 Salvar", type="primary", use_container_width=True):
+        with st.spinner("Salvando..."):
+            if sync_dia(pessoa, dia, marcadas):
+                st.cache_data.clear()
+                st.success("Salvo!")
+                st.rerun()
+            else:
+                st.error("Erro ao salvar")
 
 # === Ranking ===
 st.subheader("Ranking")
