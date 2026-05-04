@@ -91,8 +91,18 @@ def sync_dia(pessoa, dia, marcadas):
         "data": dia.isoformat(),
         "tarefas": marcadas,
     }
-    r = requests.post(URL, json=payload, timeout=15)
-    return r.json().get("ok", False)
+    try:
+        r = requests.post(URL, json=payload, timeout=20)
+        st.write("**DEBUG status:**", r.status_code)
+        st.write("**DEBUG resposta bruta:**", r.text[:500])
+        try:
+            return r.json().get("ok", False)
+        except Exception as e:
+            st.error(f"Resposta não é JSON: {e}")
+            return False
+    except Exception as e:
+        st.error(f"Erro de conexão: {e}")
+        return False
 
 # === UI ===
 hoje = date.today()
@@ -117,106 +127,4 @@ with st.sidebar.expander("➕ Entrar no desafio"):
         nome = novo.strip()
         if not nome:
             st.warning("Digita um nome")
-        elif nome in todos_participantes:
-            st.warning("Nome já existe")
-        else:
-            st.session_state.novos_participantes.append(nome)
-            st.success(f"{nome} adicionado!")
-            st.rerun()
-
-if not todos_participantes:
-    st.sidebar.info("Adicione um participante pra começar")
-    st.info("Ninguém entrou no desafio ainda. Use a sidebar pra adicionar seu nome.")
-    st.stop()
-
-pessoa = st.sidebar.selectbox("Quem é você?", todos_participantes)
-opcao = st.sidebar.radio("Dia", [f"Hoje ({hoje.strftime('%d/%m')})", f"Ontem ({ontem.strftime('%d/%m')})"])
-dia = hoje if "Hoje" in opcao else ontem
-
-# === CHECKLIST ===
-if dia < INICIO or dia > FIM:
-    st.error("Fora do período do desafio")
-else:
-    feitas_salvas = set(df[(df["pessoa"] == pessoa) & (df["data"] == dia.isoformat())]["tarefa"].tolist())
-    
-    st.subheader(f"Checklist — {pessoa}")
-    st.markdown(f"""
-    <div class="checklist-box">
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-            <div style="font-size:1.2rem; font-weight:700;">📅 {dia.strftime('%d/%m/%Y')}</div>
-            <div style="font-size:1rem; color:#6b5d48; font-weight:600;">{len(feitas_salvas)}/{len(TAREFAS)} salvas</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    marcadas = []
-    cols = st.columns(2)
-    for idx, t in enumerate(TAREFAS):
-        with cols[idx % 2]:
-            if st.checkbox(t, value=(t in feitas_salvas), key=f"{pessoa}-{dia}-{t}"):
-                marcadas.append(t)
-    
-    mudou = set(marcadas) != feitas_salvas
-    
-    if mudou:
-        st.markdown('<div class="unsaved">⚠️ Mudanças não salvas — clica em Salvar</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="saved">✓ Tudo salvo</div>', unsafe_allow_html=True)
-    
-    if st.button("💾 Salvar", type="primary", use_container_width=True):
-        with st.spinner("Salvando..."):
-            if sync_dia(pessoa, dia, marcadas):
-                st.cache_data.clear()
-                st.success("Salvo!")
-                st.rerun()
-            else:
-                st.error("Erro ao salvar")
-
-# === Ranking ===
-st.subheader("Ranking")
-pontos = {p: len(df[df["pessoa"] == p]) for p in todos_participantes}
-dias_ativos = (min(FIM, hoje) - INICIO).days + 1
-max_possivel = dias_ativos * len(TAREFAS) if dias_ativos > 0 else 1
-ranking = sorted(pontos.items(), key=lambda x: -x[1])
-medals = ["🥇", "🥈", "🥉"]
-classes = ["gold", "silver", "bronze"]
-
-for i, (p, pts) in enumerate(ranking):
-    pct = (pts / max_possivel * 100) if max_possivel else 0
-    if i < 3:
-        pos = medals[i]
-        cls = classes[i]
-    else:
-        pos = f"{i+1}º"
-        cls = ""
-    
-    st.markdown(f"""
-    <div class="rank-card {cls}">
-        <div class="rank-pos">{pos}</div>
-        <div class="rank-info">
-            <div class="rank-name">{p}</div>
-            <div class="rank-bar"><div class="rank-bar-fill" style="width: {min(pct, 100)}%;"></div></div>
-        </div>
-        <div class="rank-stats">
-            <div class="rank-pts">{pts} pts</div>
-            <div class="rank-pct">{pct:.0f}%</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# === Histórico ===
-st.subheader("Histórico")
-dias = [INICIO + timedelta(days=i) for i in range((min(FIM, hoje) - INICIO).days + 1)]
-linhas = []
-for p in todos_participantes:
-    linha = {"Pessoa": p}
-    for d in dias:
-        n = len(df[(df["pessoa"] == p) & (df["data"] == d.isoformat())])
-        linha[d.strftime("%d/%m")] = f"{n}/6" if n else "—"
-    linhas.append(linha)
-st.dataframe(pd.DataFrame(linhas), use_container_width=True, hide_index=True)
-
-with st.expander("Ver detalhes por pessoa"):
-    p_sel = st.selectbox("Pessoa", todos_participantes, key="detalhe")
-    df_p = df[df["pessoa"] == p_sel].sort_values("data", ascending=False)
-    st.dataframe(df_p, use_container_width=True, hide_index=True)
+        elif nome in todos_part
