@@ -5,7 +5,6 @@ import requests
 
 st.set_page_config(page_title="Desafio 30 Dias", page_icon="🏆", layout="centered")
 
-# === CSS ===
 st.markdown("""
 <style>
     .stApp { background-color: #f5f0e6; color: #2a2520; }
@@ -23,9 +22,7 @@ st.markdown("""
     div[data-testid="stExpander"] summary { color: #2a2520 !important; font-weight: 600; }
     .stDataFrame { border: 1px solid #d4c8b0; border-radius: 6px; }
     .stDataFrame * { color: #2a2520 !important; }
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] {
-        color: #2a2520 !important; border-color: #b8a888 !important; background-color: #faf6ed !important;
-    }
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] { color: #2a2520 !important; border-color: #b8a888 !important; background-color: #faf6ed !important; }
     .stCheckbox label, .stCheckbox label p { color: #2a2520 !important; font-weight: 500; font-size: 1.05rem !important; }
     .stRadio label, .stRadio label p { color: #2a2520 !important; }
     .checklist-box { background-color: #faf6ed; border: 1px solid #d4c8b0; border-radius: 12px; padding: 18px 22px; margin-bottom: 16px; }
@@ -50,30 +47,34 @@ TAREFAS = ["30min+ exercício", "2L+ água", "Sem açúcar", "5h+ sono", "<6h te
 INICIO = date(2026, 5, 4)
 FIM = date(2026, 6, 3)
 
-URL = st.secrets["gsheets"]["apps_script_url"]
+SUPA_URL = st.secrets["supabase"]["url"]
+SUPA_KEY = st.secrets["supabase"]["key"]
+HEADERS = {
+    "apikey": SUPA_KEY,
+    "Authorization": f"Bearer {SUPA_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=minimal"
+}
 
 @st.cache_data(ttl=5)
 def carregar():
-    r = requests.get(URL, timeout=15)
+    r = requests.get(f"{SUPA_URL}/rest/v1/registros?select=*", headers=HEADERS)
     rows = r.json()
-    if len(rows) <= 1:
+    if not rows or not isinstance(rows, list):
         return pd.DataFrame(columns=["pessoa", "data", "tarefa"])
-    return pd.DataFrame(rows[1:], columns=rows[0])
+    return pd.DataFrame(rows)
 
 def sync_dia(pessoa, dia, marcadas):
-    payload = {"action": "sync_day", "pessoa": pessoa, "data": dia.isoformat(), "tarefas": marcadas}
-    try:
-        r = requests.post(URL, json=payload, timeout=20)
-        st.write("**DEBUG status:**", r.status_code)
-        st.write("**DEBUG resposta:**", r.text[:500])
-        try:
-            return r.json().get("ok", False)
-        except Exception as e:
-            st.error(f"Resposta não é JSON: {e}")
-            return False
-    except Exception as e:
-        st.error(f"Erro de conexão: {e}")
-        return False
+    dia_str = dia.isoformat()
+    requests.delete(
+        f"{SUPA_URL}/rest/v1/registros?pessoa=eq.{pessoa}&data=eq.{dia_str}",
+        headers=HEADERS
+    )
+    if marcadas:
+        payload = [{"pessoa": pessoa, "data": dia_str, "tarefa": t} for t in marcadas]
+        r = requests.post(f"{SUPA_URL}/rest/v1/registros", json=payload, headers=HEADERS)
+        return r.status_code in [200, 201]
+    return True
 
 hoje = date.today()
 ontem = hoje - timedelta(days=1)
@@ -116,7 +117,7 @@ if dia < INICIO or dia > FIM:
     st.error("Fora do período do desafio")
 else:
     feitas_salvas = set(df[(df["pessoa"] == pessoa) & (df["data"] == dia.isoformat())]["tarefa"].tolist())
-    
+
     st.subheader(f"Checklist — {pessoa}")
     st.markdown(f"""
     <div class="checklist-box">
@@ -126,21 +127,20 @@ else:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     marcadas = []
     cols = st.columns(2)
     for idx, t in enumerate(TAREFAS):
         with cols[idx % 2]:
             if st.checkbox(t, value=(t in feitas_salvas), key=f"{pessoa}-{dia}-{t}"):
                 marcadas.append(t)
-    
+
     mudou = set(marcadas) != feitas_salvas
-    
     if mudou:
         st.markdown('<div class="unsaved">⚠️ Mudanças não salvas — clica em Salvar</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="saved">✓ Tudo salvo</div>', unsafe_allow_html=True)
-    
+
     if st.button("💾 Salvar", type="primary", use_container_width=True):
         with st.spinner("Salvando..."):
             if sync_dia(pessoa, dia, marcadas):
@@ -160,18 +160,14 @@ classes = ["gold", "silver", "bronze"]
 
 for i, (p, pts) in enumerate(ranking):
     pct = (pts / max_possivel * 100) if max_possivel else 0
-    if i < 3:
-        pos = medals[i]
-        cls = classes[i]
-    else:
-        pos = f"{i+1}º"
-        cls = ""
+    pos = medals[i] if i < 3 else f"{i+1}º"
+    cls = classes[i] if i < 3 else ""
     st.markdown(f"""
     <div class="rank-card {cls}">
         <div class="rank-pos">{pos}</div>
         <div class="rank-info">
             <div class="rank-name">{p}</div>
-            <div class="rank-bar"><div class="rank-bar-fill" style="width: {min(pct, 100)}%;"></div></div>
+            <div class="rank-bar"><div class="rank-bar-fill" style="width: {min(pct,100)}%;"></div></div>
         </div>
         <div class="rank-stats">
             <div class="rank-pts">{pts} pts</div>
